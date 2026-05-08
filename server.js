@@ -35,53 +35,62 @@ const SECRET = "krishi_secret";
 // LOGIN (ONLY ONE VERSION)
 
 app.post("/api/login", async (req, res) => {
-  const { name, password } = req.body;
+  try {
+    const { name, password } = req.body || {}; // 🔥 SAFE
 
-  console.log("LOGIN BODY:", name, password);
+    console.log("LOGIN BODY:", name, password);
 
-  const user = await User.findOne({ name });
-  console.log("USER FROM DB:", user);
+    if (!name || !password) {
+      return res.status(400).json({ error: "Name and password required" });
+    }
 
-  // ✅ FIRST CHECK USER
-  if (!user) {
-    return res.status(401).json({ error: "Invalid credentials" });
+    const user = await User.findOne({ name });
+
+    if (!user) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    const token = jwt.sign(
+      { id: user._id, name: user.name },
+      SECRET,
+      { expiresIn: "1d" }
+    );
+
+    res.json({ token, user });
+
+  } catch (err) {
+    console.error("LOGIN ERROR:", err);
+    res.status(500).json({ error: "Server error" });
   }
-
-  
-  const isMatch = await bcrypt.compare(password, user.password);
-
-  if (!isMatch) {
-    return res.status(401).json({ error: "Invalid credentials" });
-  }
-
-  console.log("✅ LOGIN SUCCESS");
-
-  const token = jwt.sign(
-    { id: user._id, name: user.name },
-    SECRET,
-    { expiresIn: "1d" }
-  );
-
-  res.json({ token, user });
 });
 // ✅ REGISTER ROUTE
 
 
 app.post("/api/register", async (req, res) => {
   try {
-    const { name, password } = req.body;
+    const { name, password } = req.body || {};
+
+    if (!name || !password) {
+      return res.status(400).json({ error: "Missing fields" });
+    }
 
     const existingUser = await User.findOne({ name });
+
     if (existingUser) {
       return res.status(400).json({ msg: "User already exists" });
     }
 
-    // 🔥 HASH PASSWORD
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newUser = new User({
       name,
-      password: hashedPassword
+      password: hashedPassword,
     });
 
     await newUser.save();
@@ -95,42 +104,42 @@ app.post("/api/register", async (req, res) => {
     res.json({ token });
 
   } catch (err) {
-    console.log(err);
-    res.status(500).json({ error: "Server error" });
-  }
+  console.log("BACKEND ERROR:", err.response?.data);
+  console.log("FULL ERROR:", err);
+
+  alert("Registration failed");
+}
 });
 app.post("/api/schemes", async (req, res) => {
-   console.log("🔥 SCHEMES HIT");
+  console.log("🔥 SCHEMES HIT");
   console.log("BODY:", req.body);
+
   try {
-    console.log("REQ BODY:", req.body); // 👈 ADD THIS
+    const schemes = [
+  {
+    name: "PM Kisan Yojana",
+    crop: "rice",
+    state: "Bihar",
+    link: "https://pmkisan.gov.in/"
+  },
+  {
+    name: "KCC Loan",
+    crop: "all",
+    state: "India",
+    link: "https://www.nabard.org/content1.aspx?id=23"
+  }
+];
 
-    const { crop, state } = req.body;
-
-    const schemes = await Scheme.find({
-  $and: [
-    {
-      $or: [
-        { crop: { $regex: new RegExp(`^${crop}$`, "i") } },
-        { crop: { $regex: /^all$/i } }
-      ]
-    },
-    {
-      $or: [
-        { state: { $regex: new RegExp(`^${state}$`, "i") } },
-        { state: { $regex: /^india$/i } }
-      ]
-    }
-  ]
-});
-
-    console.log("FOUND SCHEMES:", schemes); // 👈 ADD THIS
+    console.log("FOUND SCHEMES:", schemes);
 
     res.json({ schemes });
 
   } catch (err) {
     console.log(err);
-    res.status(500).json({ error: "Server error" });
+
+    res.status(500).json({
+      error: "Server error"
+    });
   }
 });
 /* ───────── ANALYZE ───────── */

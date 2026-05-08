@@ -5,14 +5,23 @@ const router = express.Router();
 const SECRET = "krishi_secret_key";
 
 router.post("/login", (req, res) => {
-  const { name } = req.body;
+  try {
+    const { name } = req.body;
 
-  const token = jwt.sign({ name }, SECRET, { expiresIn: "1d" });
+    if (!name) {
+      return res.status(400).json({ message: "Name is required" });
+    }
 
-  res.json({
-    token,
-    user: { name }
-  });
+    const token = jwt.sign({ name }, SECRET, { expiresIn: "1d" });
+
+    res.json({
+      token,
+      user: { name }
+    });
+  } catch (err) {
+    console.error("LOGIN ERROR:", err);
+    res.status(500).json({ message: "Server error" });
+  }
 });
 
 module.exports = router;
