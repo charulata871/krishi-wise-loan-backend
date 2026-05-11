@@ -7,15 +7,15 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 const app = express();
-
-const corsOptions = {
+app.use(cors({
   origin: [
-    "https://backend-1-xj9l.onrender.com",
     "http://localhost:5173",
-    "krishi-wise-loan-sqjh.vercel.app"
+    /\.vercel\.app$/
   ],
-  credentials: true,
-};
+  credentials: true
+}));
+
+
 
 app.use(cors(corsOptions));
 app.use(express.json());
